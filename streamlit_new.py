@@ -8,6 +8,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 import time
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load .env file
+
+api_key = os.getenv("api_key")
 
 # Configure page
 st.set_page_config(page_title="RAG Diabetes Chatbot", page_icon="🤖", layout="wide")

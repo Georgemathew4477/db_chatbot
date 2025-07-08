@@ -7,6 +7,16 @@ import os
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+
+
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load .env file
+
+api_key = os.getenv("api_key")
+
+
 # Load and chunk NHS documents
 chunk_size = 500
 chunks = []

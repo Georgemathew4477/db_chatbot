@@ -1,0 +1,274 @@
+Diabetes (type 1 and type 2)
+in children and young
+people: diagnosis and
+management
+
+
+Blood glucose and plasma glucose
+'Blood glucose' is the more commonly used term. However, a lot of the evidence this
+guideline is based on uses 'plasma' rather than 'blood' glucose, and patient-held glucose
+meters and monitoring systems are calibrated to plasma glucose equivalents. Because of
+this, in this guideline we use the term 'blood glucose', except when referring to specific
+concentration values.
+1.1 Diagnosis 
+
+1.1.1 Be aware that signs of type 1 diabetes in children and young people include:
+• hyperglycaemia (random plasma glucose more than 11 mmol/litre)
+• polyuria
+• polydipsia
+• weight loss
+• excessive tiredness. [2004, amended 2015]
+1.1.2 Refer children and young people with suspected type 1 diabetes immediately (on
+the same day) to a multidisciplinary paediatric diabetes team with the
+competencies needed to confirm diagnosis and provide immediate care. [2004,amended 2015]
+1.1.3 Confirm type 1 diabetes in children and young people using the plasma glucose
+criteria in the World Health Organization's 2006 report on the diagnosis and
+classification of diabetes mellitus. [2004, amended 2015]
+1.1.4 When diagnosing diabetes in a child or young person, assume type 1 diabetes
+unless there are strong indications of type 2 diabetes, monogenic or
+mitochondrial diabetes. [2015]
+1.1.5 Think about the possibility of type 2 diabetes in children and young people with
+suspected diabetes who:
+• have a strong family history of type 2 diabetes
+• are obese
+• are from a Black or Asian family background
+• do not need insulin, or need less than 0.5 units/kg body weight/day after the
+partial remission phase
+• show evidence of insulin resistance (for example, acanthosis nigricans).
+[2004, amended 2015] 
+
+1.1.6 Think about the possibility of other types of diabetes (not type 1 or 2), such as
+other insulin-resistance syndromes, or monogenic or mitochondrial diabetes, in
+children and young people with suspected diabetes who have any of the
+following:
+• diabetes in the first year of life
+• rarely or never develop ketones in the blood (ketonaemia) during episodes of
+hyperglycaemia
+• associated features, such as optic atrophy, retinitis pigmentosa, deafness, or
+another systemic illness or syndrome. [2004, amended 2015]
+1.1.7 Do not measure C-peptide or diabetes-specific autoantibody titres at initial
+presentation to distinguish type 1 diabetes from type 2 diabetes. [2015] 
+
+1.1.8 Consider measuring C-peptide after initial presentation if needed to distinguish
+between type 1 diabetes and other types of diabetes. Be aware that C-peptide
+concentrations have better discriminative value the longer the interval between
+initial presentation and the test. [2015]
+1.1.9 Perform genetic testing if atypical disease behaviour, clinical characteristics or
+family history suggest monogenic diabetes. [2015]
+
+
+Type 2 diabetes 
+
+Education and information
+1.3.1 When giving children and young people, or their families or carers, information
+about type 2 diabetes:
+• tailor the timing, content and delivery of information to their needs and
+preferences, paying particular attention to people with additional needs such
+as autistic people or those with learning disabilities, people who have
+physical or sensory disabilities and people who have difficulties speaking or
+reading English
+• ensure that the information given supports shared decision making between
+the child or young person and the multidisciplinary diabetes team.
+Follow the recommendation in NICE's guideline on shared decision making
+and babies, children and young people's experience of healthcare. [2023]
+1.3.2 Offer children and young people with type 2 diabetes and their families or carers
+a continuing programme of education from diagnosis. Include the following core
+topics:
+• the importance of managing glucose levels, including achieving and
+maintaining glucose and HbA1c targets
+• how and when to take capillary blood glucose measurements (selfDiabetes (type 1 and type 2) in children and young people: diagnosis and management
+
+• how diet, increasing physical activity and reducing body weight can reduce
+the symptoms of type 2 diabetes and lead to remission
+• how diet, physical activity, body weight and intercurrent illness affects blood
+glucose levels
+• how metformin can help, and its possible adverse effects
+• the complications of type 2 diabetes and how to prevent them.
+
+1.3.3 Tailor the education programme to each child or young person with
+type 2 diabetes and their families or carers, taking account of issues such as:
+• personal preferences
+• emotional wellbeing
+• age and maturity
+• cultural considerations
+• existing knowledge
+• current and future social circumstances
+• life goals. [2015]
+1.3.4 Give children and young people with type 2 diabetes who are taking insulin, and
+their families or carers, information and education about:
+• insulin therapy (including its aims and how it works) 
+• insulin delivery (including rotating injection sites within the same body region)
+• dosage adjustment
+• the recognition and management of hypoglycaemia
+• the importance of monitoring their glucose levels. [2023]
+1.3.5 Give children and young people with type 2 diabetes who are offered continuous
+glucose monitoring (CGM), and their families and carers, information about how
+to use their chosen device, as part of their continuing programme of education.
+[2023]
+1.3.6 Explain to children and young people with type 2 diabetes and their families or
+carers that, like people without diabetes, they should have: 
+• regular dental examinations (see the NICE guideline on dental checks:
+intervals between oral health reviews)
+• an eye examination by an optician every 2 years. [2004, amended 2015]
+1.3.7 Encourage children and young people with type 2 diabetes and their families or
+carers to discuss any concerns and raise any questions they have with their
+diabetes team. [2015]
+1.3.8 Give children and young people with type 2 diabetes and their families or carers
+information about diabetes support groups and organisations, and the potential
+benefits of membership. Give this information after diagnosis and regularly
+afterwards. [2004, amended 2015]
+1.3.9 Explain to children and young people with type 2 diabetes and their families or
+carers how to find out about possible government disability benefits. [2004,
+amended 2015] 
+Smoking and substance misuse
+1.3.10 Encourage children and young people with type 2 diabetes not to start smoking.
+Explain the general health problems smoking causes, in particular the risks of
+vascular complications. [2004, amended 2015]
+1.3.11 For more guidance on preventing smoking, see also the NICE guideline on
+tobacco: preventing uptake, promoting quitting and treating dependence. [2004,
+amended 2015]
+1.3.12 Offer smoking cessation programmes to children and young people with
+type 2 diabetes who smoke. See also the NICE guideline on tobacco: preventing
+uptake, promoting quitting and treating dependence. [2004, amended 2015]
+1.3.13 Explain to children and young people with type 2 diabetes and their families or
+carers about the general dangers of substance misuse and the possible effects
+on blood glucose levels. [2004, amended 2015] 
+Immunisation
+1.3.14 Explain to children and young people with type 2 diabetes and their families or
+carers that the UK Health Security Agency Green Book recommends they have:
+• annual immunisation against influenza
+• immunisation against pneumococcal infection if they are taking insulin or oral
+hypoglycaemic medicines. [2004, amended 2015] 
+Dietary management
+1.3.15 At each contact with a child or young person with type 2 diabetes who is
+overweight or obese, advise them and their families or carers about the benefits
+of exercise and weight loss, and provide support towards achieving this. See also
+the NICE guideline on overweight and obesity management. [2015]
+1.3.16 Offer children and young people with type 2 diabetes dietetic support to help
+optimise body weight and blood glucose levels. [2004, amended 2015]
+1.3.17 At each contact with a child or young person with type 2 diabetes, explain to
+them and their families or carers how healthy eating can help to:
+• reduce hyperglycaemia
+• reduce cardiovascular risk
+• promote weight loss (see recommendation 1.3.15). [2015]
+1.3.18 Provide dietary advice to children and young people with type 2 diabetes and
+their families or carers in a sensitive manner. Take into account the difficulties
+that many people have with losing weight, and how healthy eating can also help
+with blood glucose levels and avoiding complications. [2015]
+1.3.19 Take into account social and cultural considerations when providing dietary
+advice to children and young people with type 2 diabetes. [2015]
+1.3.20 Encourage children and young people with type 2 diabetes to eat at least
+5 portions of fruit and vegetables each day. [2015]
+1.3.21 At each clinic visit for children and young people with type 2 diabetes:
+• measure height and weight and plot on an appropriate growth chart
+• calculate body mass index.
+Check for normal growth or significant changes in weight because these may
+reflect changes in blood glucose levels. [2004, amended 2015] 
+1.3.22 Provide arrangements for weighing children and young people with
+type 2 diabetes that respect their privacy. [2004, amended 2015] 
+At diagnosis
+1.3.23 Refer children and young people with suspected type 2 diabetes to a
+multidisciplinary paediatric diabetes team for specialist review to:
+• confirm diagnosis and
+• provide immediate and continuing care. [2023]
+1.3.24 Offer children and young people with type 2 diabetes:
+• advice and support on dietary management (see recommendations 1.3.15 to
+1.3.22)
+• a metformin monotherapy formulation in line with their own preferences
+• equipment for capillary blood glucose monitoring.
+See also recommendation 1.3.84 on screening for diabetic retinopathy.
+In May 2023, the use of formulations other than standard-release metforminwas off-label. See NICE's information on prescribing medicines. (2015,
+updated 2023) 
+1.3.25 In addition, offer children and young people with type 2 diabetes:
+• insulin if their HbA1c level is 69 mmol/mol (8.5%) or more
+• basal-bolus insulin if they have ketosis but not diabetic ketoacidosis (DKA).
+If the child or young person with type 2 diabetes exhibits signs and
+symptoms of DKA, see section 1.4 on DKA. [2023]
+Monitoring blood glucose levels and reviewing treatment
+1.3.26 Four weeks after diagnosing type 2 diabetes and starting metformin in a child or
+young person, review data from glucose monitoring and, if needed, change
+treatment (see recommendations on adding liraglutide, dulaglutide, or
+empagliflozin for people on metformin only or for people on metformin and
+insulin). [2023]
+1.3.27 Review treatment for children and young people with type 2 diabetes, as needed,
+at least every 3 months. Assess glucose trends using available data from glucose
+monitoring and HbA1c measurements. [2023]
+1.3.28 If HbA1c monitoring cannot be used because of disturbed erythrocyte turnover or
+abnormal haemoglobin type, estimate trends in blood glucose levels using one of
+the following:
+• glucose profiles
+• total glycated haemoglobin estimation (if abnormal haemoglobins)
+• fructosamine estimation. [2023]
+1.3.29 Adjust the frequency of capillary blood glucose monitoring based on the person's
+treatment and whether they are using CGM. Ensure they have enough test strips
+for capillary blood glucose monitoring. [2023] 
+
+HbA1c targets and monitoring
+1.3.30 Measure HbA1c using methods that have been calibrated according to the
+International Federation of Clinical Chemistry standardisation. [2015]
+1.3.31 Explain to children and young people with type 2 diabetes and their families or
+carers that an HbA1c target level of 48 mmol/mol (6.5%) or lower will minimise
+their risk of long-term complications. [2015]
+1.3.32 Explain to children and young people with type 2 diabetes who have an HbA1c
+level above 48 mmol/mol (6.5%) that any reduction in HbA1c level reduces their
+risk of long-term complications. [2015]
+1.3.33 Explain the benefits of safely achieving and maintaining the lowest attainable
+HbA1c to children and young people with type 2 diabetes and their families or
+carers. [2015]
+1.3.34 Agree an individualised lowest achievable HbA1c target with each child or young
+person with type 2 diabetes and their families or carers. Take into account factors
+such as their daily activities, individual life goals, complications and
+comorbidities. [2015]
+1.3.35 Measure HbA1c levels every 3 months in children and young people with
+type 2 diabetes. [2015]
+1.3.36 Support children and young people with type 2 diabetes and their families or
+carers to safely achieve and maintain their individual agreed HbA1c target level.
+[2015] 
+1.3.37 Diabetes services should document the proportion of children and young people
+with type 2 diabetes who achieve an HbA1c level of 53 mmol/mol (7%) or lower.
+[2015] 
+Continuous glucose monitoring
+1.3.38 Offer real-time continuous glucose monitoring (rtCGM) to children and young
+people with type 2 diabetes if any of the following apply. They:
+• have a need, condition or disability (including a mental health need, learning
+disability or cognitive impairment) that means they cannot engage in
+monitoring their glucose levels by capillary blood glucose monitoring
+• would otherwise be advised to self-monitor at least 8 times a day
+• have recurrent or severe hypoglycaemia. [2023]
+1.3.39 Consider rtCGM for children and young people with type 2 diabetes who are on
+insulin therapy. [2023]
+1.3.40 Consider intermittently scanned continuous glucose monitoring (isCGM,
+commonly referred to as 'flash') for children and young people with type 2
+diabetes aged 4 years and over who are on insulin therapy if:
+• rtCGM is contraindicated for them or
+• they express a clear preference for isCGM. 
+In May 2023, use of isCGM for children aged 3 years and under was offlicence. [2023]
+1.3.41 When offering CGM to children and young people with type 2 diabetes, choose
+the appropriate device with them, based on their individual preferences, needs,
+characteristics, and the functionality of the devices available. See box 1 for
+factors to consider as part of this discussion. [2023]
+1.3.42 When choosing a CGM device, if multiple devices meet the person's needs and
+preferences, offer the device with the lowest cost. [2023] 
+1.3.43 CGM should be provided by a team with expertise in its use to support children
+and young people to self-manage their type 2 diabetes. [2023]
+1.3.44 Advise children and young people with type 2 diabetes who are using CGM, and
+their families or carers, that they will still need to take capillary blood glucose
+measurements, but they can do this less often. Explain that this is because they
+will need the capillary blood glucose measurements:
+• to check the accuracy of their CGM device
+• as a back-up (for example, if the device stops working). [2023]
+1.3.45 Monitor and review the child or young person's use of CGM when reviewing their
+diabetes care plan and explain to them the importance of continuously wearing
+the device. [2023]
+1.3.46 If the child or young person is not using their CGM device at least 70% of the
+time:
+• ask if they are having problems with their device
+• look at ways to address any problems or concerns to improve their use of the
+device, including further education and emotional and psychological support.
+[2023]
+1.3.47 Commissioners, providers and healthcare professionals should address
+inequalities in CGM access and uptake by: 
+• monitoring who is using CGM
+• identifying groups who are eligible but have a lower uptake
+• making plans to engage with these groups to encourage them to consider
+CGM. [2023] 

@@ -1,0 +1,10 @@
+streamlit
+sentence-transformers
+faiss-cpu
+numpy
+scikit-learn
+python-dotenv
+sqlalchemy
+mysql-connector-python
+passlib[bcrypt]
+groq

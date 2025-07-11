@@ -4,7 +4,6 @@ faiss-cpu
 numpy
 scikit-learn
 python-dotenv
-sqlalchemy
-mysql-connector-python
+pymongo
 passlib[bcrypt]
 groq

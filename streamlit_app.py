@@ -13,7 +13,7 @@ import os
 
 # === Load Environment ===
 load_dotenv()
-api_key = os.getenv("GROQ_API_KEY")
+api_key = os.getenv("GROQ_API_KEY") or st.secrets["GROQ_API_KEY"]
 mongo_url = os.getenv("MONGO_URL") or st.secrets["MONGO_URL"]
 
 # === MongoDB Connection ===

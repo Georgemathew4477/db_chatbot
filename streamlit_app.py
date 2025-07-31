@@ -1,15 +1,20 @@
-import streamlit as st
-from sentence_transformers import SentenceTransformer
+
 import faiss
+import time
+import os
 import numpy as np
 from groq import Groq
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import time
+import streamlit as st
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from passlib.hash import bcrypt
-import os
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from utils.reminders import add_reminder, load_user_reminders
+from utils.glucose import store_glucose_reading, get_latest_glucose
+from datetime import datetime, timedelta
+
 
 # === Load Environment ===
 load_dotenv()
@@ -71,6 +76,7 @@ if not st.session_state.logged_in:
                     "gender": user.get("gender"),
                     "diabetes_type": user.get("diabetes_type")
                 }
+                load_user_reminders(email)  # 🔁 Load user's scheduled jobs into APScheduler
                 st.rerun()
             else:
                 st.sidebar.error("❌ Invalid login.")
@@ -81,6 +87,34 @@ else:
         st.session_state.user_email = ""
         st.session_state.user_preferences = {}
         st.rerun()
+st.sidebar.markdown("### ⏰ Set a Reminder")
+st.sidebar.markdown("### 🧬 Simulate Glucose Reading")
+sim_glucose = st.sidebar.number_input("Glucose (mg/dL)", min_value=50, max_value=500, step=1)
+
+if st.sidebar.button("➕ Save Glucose Reading"):
+    store_glucose_reading(st.session_state.user_email, sim_glucose)
+    st.sidebar.success("✅ Glucose data saved.")
+
+# Auto-filled values
+default_time = (datetime.now() + timedelta(minutes=1)).time().replace(second=0, microsecond=0)
+default_message = "Check your glucose level"
+
+reminder_time = st.sidebar.time_input("Reminder Time", value=default_time, key="reminder_time")
+reminder_msg = st.sidebar.text_input("Reminder Message", value=default_message, key="reminder_msg")
+
+if st.sidebar.button("Add Reminder"):
+    if reminder_msg and reminder_time:
+        added = add_reminder(
+            st.session_state.user_email,
+            reminder_time.strftime("%H:%M"),
+            reminder_msg
+        )
+        if added:
+            st.sidebar.success("✅ Reminder scheduled.")
+        else:
+            st.sidebar.warning("⚠️ Reminder already exists.")
+    else:
+        st.sidebar.error("❌ Please enter both time and message.")
 
 # Force login before app runs
 if not st.session_state.logged_in:
@@ -149,11 +183,24 @@ def ask_bot(question, embedder, index, chunks, sources, preferences, k=3):
     _, I = index.search(np.array([q_embed]), k=k)
     top_chunks = [chunks[i] for i in I[0] if i < len(chunks)]
     top_sources = [sources[i] for i in I[0] if i < len(sources)]
+    
+    # Combine top chunks into context
     context = "\n\n".join(top_chunks)
-    context += f"\n\nUser Info: Age: {preferences.get('age')}, Gender: {preferences.get('gender')}, Diabetes Type: {preferences.get('diabetes_type')}"
+    
+    # === Inject glucose reading if available ===
+    glucose = get_latest_glucose(st.session_state.user_email)
+    glucose_line = f"Latest Glucose: {glucose} mg/dL\n" if glucose else ""
+
+    # === Personalization context ===
+    user_info = f"User Info: Age: {preferences.get('age')}, Gender: {preferences.get('gender')}, Diabetes Type: {preferences.get('diabetes_type')}"
+    
+    # === Final full prompt context ===
+    context += f"\n\n{glucose_line}{user_info}"
+    
     prompt = f"""You are an NHS-based assistant. Only use this NHS guidance to answer:
 {context}
 Be honest. If unsure, say so and recommend a doctor."""
+
     answer = call_groq(prompt, question)
     return answer, top_chunks, top_sources
 

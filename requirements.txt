@@ -7,3 +7,5 @@ python-dotenv
 pymongo
 passlib[bcrypt]
 groq
+apscheduler
+email-validator

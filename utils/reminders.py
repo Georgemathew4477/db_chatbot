@@ -3,21 +3,46 @@ from pymongo import MongoClient
 from datetime import datetime
 import pytz
 import os
+import smtplib
+from email.mime.text import MIMEText
 from dotenv import load_dotenv
 
+# === Load environment variables ===
 load_dotenv()
 mongo_url = os.getenv("MONGO_URL")
+email_host = os.getenv("EMAIL_HOST")
+email_port = int(os.getenv("EMAIL_PORT", 587))
+email_address = os.getenv("EMAIL_ADDRESS")
+email_password = os.getenv("EMAIL_PASSWORD")
 
+# === MongoDB Connection ===
 client = MongoClient(mongo_url)
 db = client["chatbot_db"]
 reminders_col = db["reminders"]
 
+# === APScheduler Setup ===
 scheduler = BackgroundScheduler(timezone=pytz.timezone("Europe/London"))
 scheduler.start()
 
+# === Email Sending Function ===
 def send_reminder(user_email, message):
-    print(f"[Reminder for {user_email}] {message} at {datetime.now()}")
+    try:
+        msg = MIMEText(message)
+        msg["Subject"] = "🩺 Glucose Reminder"
+        msg["From"] = email_address
+        msg["To"] = user_email
 
+        with smtplib.SMTP(email_host, email_port) as server:
+            server.starttls()
+            server.login(email_address, email_password)
+            server.sendmail(email_address, [user_email], msg.as_string())
+
+        print(f"✅ Email reminder sent to {user_email} at {datetime.now()}")
+
+    except Exception as e:
+        print(f"❌ Failed to send email to {user_email}: {e}")
+
+# === Add Reminder ===
 def add_reminder(user_email, time_str, message):
     hour, minute = map(int, time_str.split(":"))
     job_id = f"{user_email}_{time_str}_{message}"
@@ -44,6 +69,7 @@ def add_reminder(user_email, time_str, message):
 
     return True
 
+# === Load Reminders from DB on Login ===
 def load_user_reminders(user_email):
     reminders = reminders_col.find({"user_email": user_email})
     for r in reminders:
@@ -59,4 +85,4 @@ def load_user_reminders(user_email):
                 replace_existing=True,
             )
         except Exception as e:
-            print(f"⚠️ Failed to load reminder: {e}")
+            print(f"⚠️ Failed to load reminder for {user_email}: {e}")

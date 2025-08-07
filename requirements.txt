@@ -8,7 +8,5 @@ pymongo
 passlib[bcrypt]
 groq
 apscheduler
-<<<<<<< HEAD
 email-validator
-=======
->>>>>>> 3e73732bb1eccc2a279dc53f26a9759f407fe12f
+

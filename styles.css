@@ -1,0 +1,122 @@
+/* ============================
+   Dark Glass UI for Streamlit
+   ============================ */
+
+
+   
+/* Reserve space so sidebar bottom auth doesn't overlap */
+[data-testid="stSidebarContent"] { 
+  padding-bottom: 110px; 
+}
+
+/* Hide Streamlit's inline "Press Enter to apply" hint */
+[data-testid="stWidgetInstructions"] { 
+  display: none !important; 
+}
+
+/* ====== Glassy Topbar ====== */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  padding: 10px 0 8px;
+  background: rgba(15,17,21,0.65);      /* transparent dark */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  transition: background-color .3s ease, border-color .3s ease;
+}
+
+/* Give the first block after topbar a tiny nudge */
+.topbar + div { margin-top: 6px; }
+
+/* Page selector width in topbar */
+.topbar .stSelectbox div[data-baseweb="select"]{ min-width: 220px; }
+
+/* ====== Glassy Sidebar ====== */
+[data-testid="stSidebar"] { background: transparent; }
+
+[data-testid="stSidebarContent"] > div:first-child {
+  background: rgba(18,20,25,0.55);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 12px;
+  /* make content scroll if long, keep auth visible */
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+}
+
+/* Bottom-fixed auth block (ChatGPT-like) */
+.sidebar-bottom{
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+/* ====== Main Containers / Cards ====== */
+.block-container [data-testid="stVerticalBlock"] > div > div{
+  background: rgba(18,20,25,0.45);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+  padding: 8px;
+}
+
+/* Metrics look tidy */
+.stMetric{
+  background: rgba(255,255,255,0.03) !important;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+/* ====== Inputs / Selects / Buttons ====== */
+/* keep inputs readable on glass */
+input, textarea, select { 
+  background: transparent !important; 
+}
+
+div[data-baseweb="input"],
+div[data-baseweb="select"]{
+  background: rgba(255,255,255,0.05) !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+.stButton > button{
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(124,135,255,0.12);
+  transition: transform .05s ease, background .2s ease, box-shadow .2s ease;
+}
+.stButton > button:hover{ 
+  transform: translateY(-1px); 
+  background: rgba(124,135,255,0.18); 
+}
+.stButton > button:focus-visible{ 
+  box-shadow: 0 0 0 3px rgba(122,162,247,0.45); 
+}
+
+/* ====== Expanders ====== */
+[data-testid="stExpander"]{
+  background: rgba(18,20,25,0.45);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+}
+
+/* ====== Chat bubbles ====== */
+[data-testid="stChatMessage"]{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 14px;
+}
+
+/* ====== Accessibility: clearer focus ring ====== */
+*:focus-visible{
+  outline: 2px solid rgba(122,162,247,0.6) !important;
+  outline-offset: 2px;
+}

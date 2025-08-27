@@ -14,3 +14,8 @@ faster-whisper
 ffmpeg-python
 easyocr
 pytesseract
+opencv-python-headless
+pdfminer.six
+pypdf
+python-magic
+

@@ -9,3 +9,7 @@ passlib[bcrypt]
 groq
 apscheduler
 email-validator
+faster-whisper
+ffmpeg-python
+easyocr
+pytesseract

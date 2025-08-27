@@ -14,6 +14,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from utils.link_ingest import ingest_from_url
 from utils.content_checker import verify_text_against_nhs, verify_media_file
 import tempfile
+
 from utils.reminders import add_reminder, load_user_reminders
 from utils.glucose import store_glucose_reading, get_latest_glucose
 
@@ -31,7 +32,6 @@ history_col = None
 
 if mongo_url:
     try:
-        # Short timeout so local dev doesn't hang if URI is wrong/offline
         client = MongoClient(mongo_url, serverSelectionTimeoutMS=5000)
         client.admin.command("ping")  # force connection test
         db = client["chatbot_db"]
@@ -63,53 +63,31 @@ def get_user_history(email: str, limit: int = 30):
 
 def content_checker_page():
     st.header("🕵️ Content Checker — Verify Social Media Posts/Clips")
-    st.caption(
-        "Paste a link, upload a short video/audio, or paste the transcript/caption. "
-        "We’ll extract medical claims and verify them against NHS/NICE guidance."
-    )
+    st.caption("Paste a link, upload a short video/audio, or paste the transcript/caption. "
+               "We’ll extract medical claims and verify them against NHS/NICE guidance.")
 
-    # Toggles (runtime)
-    col_a, col_b = st.columns([1, 1])
+    # Optional toggles
+    col_a, col_b = st.columns([1,1])
     with col_a:
-        enable_stt = st.checkbox(
-            "Enable STT (Whisper CPU)",
-            value=True,
-            help="Uses faster-whisper on CPU. Leave ON for audio/video.",
-        )
+        enable_stt = st.checkbox("Enable STT (Whisper CPU)", value=True)
     with col_b:
-        enable_ocr = st.checkbox(
-            "Enable OCR (video frames)",
-            value=False,
-            help="Requires ffmpeg + easyocr. Turn OFF if you only need audio.",
-        )
+        enable_ocr = st.checkbox("Enable OCR (video frames)", value=False)
 
-    # Expose toggles to utils/content_checker.py
+    # Make toggles visible to utils/content_checker.py
     os.environ["USE_WHISPER"] = "1" if enable_stt else "0"
     os.environ["USE_OCR"] = "1" if enable_ocr else "0"
 
-    url = st.text_input(
-        "🔗 Link (YouTube or direct media preferred)",
-        placeholder="https://www.youtube.com/watch?v=...",
-    )
-    up_file = st.file_uploader(
-        "Upload video/audio (mp4/mov/mp3/wav) — optional",
-        type=["mp4", "mov", "mp3", "wav"],
-    )
-    txt = st.text_area(
-        "Transcript / Caption / Chat text (recommended)",
-        height=160,
-        placeholder="Paste what the post says here...",
-    )
-    force_transcribe = st.checkbox(
-        "Force transcription (ignore scraped transcript/description)"
-    )
+    url = st.text_input("🔗 Link (YouTube or direct media preferred)", placeholder="https://www.youtube.com/watch?v=...")
+    up_file = st.file_uploader("Upload video/audio (mp4/mov/mp3/wav)", type=["mp4", "mov", "mp3", "wav"])
+    txt = st.text_area("Transcript / Caption / Chat text", height=160, placeholder="Paste what the post says here...")
+    force_transcribe = st.checkbox("Force transcription (ignore scraped transcript/description)")
     run = st.button("Verify claims", type="primary")
 
     if not run:
         return
 
     if not api_key:
-        st.error("Groq API key missing. Add `GROQ_API_KEY` in Streamlit Secrets or .env.")
+        st.error("Groq API key missing. Add `GROQ_API_KEY` in Secrets or .env.")
         return
 
     # Load RAG assets
@@ -121,14 +99,12 @@ def content_checker_page():
     index, _ = create_faiss_index(embedder, chunks)
 
     result = None
-    transcript_text = None  # keep transcript to preview/send
+    transcript_text = None
 
-    # 1) Prefer pasted text
+    # 1) Pasted text
     if txt and txt.strip():
         with st.spinner("Verifying pasted text against NHS/NICE..."):
-            result = verify_text_against_nhs(
-                txt.strip(), embedder, index, chunks, sources, api_key=api_key, k=5
-            )
+            result = verify_text_against_nhs(txt.strip(), embedder, index, chunks, sources, api_key=api_key, k=5)
             transcript_text = result.get("transcript") or txt.strip()
 
     # 2) URL ingestion
@@ -139,74 +115,52 @@ def content_checker_page():
             except Exception as e:
                 ing = None
                 st.warning(f"Couldn’t ingest that link: {e}")
-    
-            if not ing:
-                st.warning("Couldn’t read that link. Try uploading the file or enabling transcription.")
-                return
-    
-            st.caption(f"Source note: {ing.get('note','')}")
-            scraped_text = ing.get("text")
-            video_path = ing.get("video_path")
-            audio_path = ing.get("audio_path")
-    
-            # Prefer downloaded VIDEO first (exact media), else audio
-            media_path = video_path or audio_path
-    
-            if force_transcribe and media_path:
-                result = verify_media_file(
-                    media_path, embedder, index, chunks, sources,
-                    api_key=api_key, k=5, use_ocr=enable_ocr
-                )
-            elif media_path:
-                # Prefer transcription when we have the actual media file
-                result = verify_media_file(
-                    media_path, embedder, index, chunks, sources,
-                    api_key=api_key, k=5, use_ocr=enable_ocr
-                )
-            elif scraped_text:
-                # Only if no media was available
-                result = verify_text_against_nhs(
-                    scraped_text, embedder, index, chunks, sources,
-                    api_key=api_key, k=5
-                )
-            else:
-                st.warning("Couldn’t extract text or media. Try uploading the file.")
-                return
-    
-            # Cleanup temp media
-            for p in [video_path, audio_path]:
-                try:
-                    if p and os.path.exists(p):
-                        os.unlink(p)
-                except Exception:
-                    pass
-                
-            # Optional: show scraped description/captions for comparison
-            if scraped_text:
-                with st.expander("📄 Scraped description/captions (not used for Shorts)"):
-                    st.text_area("Scraped text (first 1000 chars)", scraped_text[:1000], height=160, key="scraped_text_preview")
 
+            if not ing:
+                st.warning("Couldn’t read that link. For Instagram/TikTok, please paste the caption/transcript.")
+                return
+
+            if force_transcribe and (ing.get("audio_path") or ing.get("kind")):
+                if not ing.get("audio_path") and ing.get("kind") in {"youtube_transcript", "youtube_description"}:
+                    try:
+                        from utils.link_ingest import download_audio_with_ytdlp
+                        audio_path = download_audio_with_ytdlp(url.strip())
+                        ing = {"kind": "downloaded_audio", "audio_path": audio_path, "text": None, "note": "Forced transcription via audio download."}
+                    except Exception as e:
+                        st.warning(f"Audio download failed: {e}")
+
+            st.caption(f"Source note: {ing.get('note','')}")
+
+            if not force_transcribe and ing.get("text"):
+                result = verify_text_against_nhs(ing["text"], embedder, index, chunks, sources, api_key=api_key, k=5)
+                transcript_text = result.get("transcript") or ing["text"]
+            elif ing.get("audio_path"):
+                try:
+                    result = verify_media_file(
+                        ing["audio_path"], embedder, index, chunks, sources,
+                        api_key=api_key, k=5, use_ocr=enable_ocr
+                    )
+                    transcript_text = result.get("transcript", "")
+                finally:
+                    try:
+                        if os.path.exists(ing["audio_path"]):
+                            os.unlink(ing["audio_path"])
+                    except Exception:
+                        pass
+            else:
+                st.warning("Couldn’t extract text or audio. Try uploading the file or pasting the transcript.")
+                return
 
     # 3) File upload
     elif up_file is not None:
         with st.spinner("Transcribing media and verifying..."):
             tmp_path = None
             try:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=os.path.splitext(up_file.name)[-1]
-                ) as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(up_file.name)[-1]) as tmp:
                     tmp.write(up_file.read())
                     tmp_path = tmp.name
-                result = verify_media_file(
-                    tmp_path,
-                    embedder,
-                    index,
-                    chunks,
-                    sources,
-                    api_key=api_key,
-                    k=5,
-                    use_ocr=enable_ocr,
-                )
+                result = verify_media_file(tmp_path, embedder, index, chunks, sources,
+                                           api_key=api_key, k=5, use_ocr=enable_ocr)
                 transcript_text = result.get("transcript", "")
             finally:
                 if tmp_path and os.path.exists(tmp_path):
@@ -218,27 +172,9 @@ def content_checker_page():
         st.warning("Please provide a link, upload a file, or paste text.")
         return
 
-    # ---------- Transcript Preview & Send ----------
-    transcript_text = transcript_text or result.get("transcript", "")
-    if transcript_text:
-        st.markdown("### 📝 Transcript Preview")
-        st.text_area(
-            "First 1000 characters of transcript:",
-            transcript_text[:1000],
-            height=220,
-            key="transcript_preview",
-        )
-        if st.button("Send transcript to Chatbot"):
-            st.session_state["user_input"] = transcript_text[:4000]  # keep concise
-            st.session_state["page"] = "Chatbot"
-            st.rerun()
-    else:
-        st.info("⚠️ No transcript text was captured (STT/OCR may have failed).")
-
-    # ---------- Overall Verdict ----------
+    # Render results
     st.subheader("Overall Verdict")
-    badge = result["badge"]
-    summary = result["summary"]
+    badge = result["badge"]; summary = result["summary"]
     if "GREEN" in badge:
         st.success(f"{badge} — {summary}")
     elif "AMBER" in badge:
@@ -246,7 +182,17 @@ def content_checker_page():
     else:
         st.error(f"{badge} — {summary}")
 
-    # ---------- Per-claim assessment ----------
+    # Transcript viewer + send to Chatbot
+    transcript_text = transcript_text or result.get("transcript", "")
+    if transcript_text:
+        st.subheader("Transcript")
+        st.text_area("Detected transcript", value=transcript_text, height=220, key="transcript_view", label_visibility="collapsed")
+        if st.button("Send transcript to Chatbot"):
+            st.session_state["user_input"] = transcript_text[:4000]
+            st.session_state["page"] = "Chatbot"
+            st.rerun()
+
+    # Per-claim assessment
     st.subheader("Per-claim assessment")
     for i, r in enumerate(result.get("results", []), 1):
         claim = r.get("claim", "")
@@ -263,11 +209,7 @@ def content_checker_page():
                 for idx in evidence_idxs[:3]:
                     if 0 <= idx < len(chunks):
                         st.markdown(f"- **{sources[idx]}**")
-                        st.text(
-                            chunks[idx][:600]
-                            + ("..." if len(chunks[idx]) > 600 else "")
-                        )
-
+                        st.text(chunks[idx][:600] + ("..." if len(chunks[idx]) > 600 else ""))
 
 
 def clear_user_history(email: str):
@@ -302,7 +244,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 # Sidebar (Auth only, fixed bottom)
 # =========================
 with st.sidebar:
-    # ===== Chat history (only when logged in) =====
     if st.session_state.logged_in and (history_col is not None):
         st.markdown("### 🕘 Recent chats")
         hist_items = get_user_history(st.session_state.user_email, limit=30)
@@ -331,7 +272,6 @@ with st.sidebar:
 
         st.divider()
 
-    # ===== Bottom-fixed auth =====
     st.markdown('<div class="sidebar-bottom">', unsafe_allow_html=True)
 
     if not st.session_state.logged_in:
@@ -466,7 +406,6 @@ def ask_bot(question, embedder, index, chunks, sources, preferences, k=5):
 
     context = "\n\n".join(top_chunks)
 
-    # Personalization / latest glucose (if any)
     glucose = get_latest_glucose(st.session_state.user_email)
     glucose_line = f"Latest Glucose: {glucose} mg/dL\n" if glucose else ""
     user_info = (
@@ -496,16 +435,13 @@ def chatbot_page():
 
     with st.container(border=True):
         col1, col2 = st.columns(2)
-        col1.metric(" NHS Guidelines", len(set(sources)), help="Total number of guideline files loaded into the system.")
-        col2.metric(" Info Snippets", len(chunks), help="Small text sections we use to answer your questions.")
+        col1.metric(" NHS Guidelines", len(set(sources)), help="Total guideline files loaded.")
+        col2.metric(" Info Snippets", len(chunks), help="Chunks used to answer questions.")
 
     st.markdown("### 💬 Chat with the Assistant")
 
     with st.container(border=True):
-        user_input = st.chat_input(
-            "Type your question here…",
-            key="user_input"
-        )
+        user_input = st.chat_input("Type your question here…", key="user_input")
 
     k = 5
 
@@ -518,7 +454,6 @@ def chatbot_page():
         )
         duration = time.time() - start
 
-        # save history
         if history_col is not None:
             history_col.insert_one({
                 "email": st.session_state.user_email,
@@ -559,7 +494,7 @@ def user_profile_page():
         st.error("`user_profile.py` not found. Please ensure it exists in the project folder.")
 
 def health_tools_page():
-    st.header("🧪 Health Tools")    
+    st.header("🧪 Health Tools")
 
     st.subheader("🧬 Simulate Glucose Reading")
     sim_glucose = st.number_input("Glucose (mg/dL)", min_value=50, max_value=500, step=1, key="sim_glucose_main")
@@ -603,4 +538,3 @@ elif page == "Health Tools":
     health_tools_page()
 elif page == "Content Checker":
     content_checker_page()
-

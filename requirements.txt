@@ -5,8 +5,8 @@ numpy
 scikit-learn
 python-dotenv
 pymongo
-passlib[bcrypt]==1.7.4
-bcrypt>=4.1.2,<5
+passlib==1.7.4
+bcrypt==4.0.1
 easyocr>=1.7.2
 groq
 apscheduler

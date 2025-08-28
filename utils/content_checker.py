@@ -23,6 +23,17 @@ try:
     HAVE_FFMPEG = True
 except Exception:
     HAVE_FFMPEG = False
+try:
+    import imageio_ffmpeg  # pulls a bundled ffmpeg binary
+    FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
+    # imageio-ffmpeg 0.4.9+ also exposes get_ffprobe_exe(); if missing, fallback
+    FFPROBE_BIN = getattr(imageio_ffmpeg, "get_ffprobe_exe", lambda: "ffprobe")()
+    HAVE_FFMPEG = True
+except Exception:
+    # fallback to PATH
+    FFMPEG_BIN = os.getenv("FFMPEG_PATH") or "ffmpeg"
+    FFPROBE_BIN = os.getenv("FFPROBE_PATH") or "ffprobe"
+
 
 try:
     import easyocr

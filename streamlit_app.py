@@ -147,6 +147,13 @@ def content_checker_page():
         with st.spinner("Fetching content from link..."):
             try:
                 ing = ingest_from_url(url.strip())
+                debug = {
+                "kind": ing.get("kind"),
+                "text_preview": (ing.get("text") or "")[:120],
+                "has_video": bool(ing.get("video_path")),
+                "has_audio": bool(ing.get("audio_path")),
+                "note": ing.get("note"),
+                }
             except Exception as e:
                 ing = None
                 st.warning(f"Couldn’t ingest that link: {e}")
@@ -159,12 +166,7 @@ def content_checker_page():
             scraped_text = ing.get("text")
             video_path = ing.get("video_path")
             audio_path = ing.get("audio_path")
-            st.code({
-                "kind": ing.get("kind"),
-                "text_preview": (ing.get("text") or "")[:120],
-                "has_video": bool(ing.get("video_path")),
-                "has_audio": bool(ing.get("audio_path")),
-            }, language="json")
+            st.code(debug, language="json")
 
 
             # Prefer downloaded VIDEO first (exact media), else audio

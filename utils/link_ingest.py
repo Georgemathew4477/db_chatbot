@@ -12,6 +12,24 @@ try:
 except Exception:
     HAVE_YT_DLP = False
 
+
+try:
+    import ffmpeg
+    HAVE_FFMPEG = True
+except Exception:
+    HAVE_FFMPEG = False
+try:
+    import imageio_ffmpeg  # pulls a bundled ffmpeg binary
+    FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
+    # imageio-ffmpeg 0.4.9+ also exposes get_ffprobe_exe(); if missing, fallback
+    FFPROBE_BIN = getattr(imageio_ffmpeg, "get_ffprobe_exe", lambda: "ffprobe")()
+    HAVE_FFMPEG = True
+except Exception:
+    # fallback to PATH
+    FFMPEG_BIN = os.getenv("FFMPEG_PATH") or "ffmpeg"
+    FFPROBE_BIN = os.getenv("FFPROBE_PATH") or "ffprobe"
+
+
 try:
     from youtube_transcript_api import (
         YouTubeTranscriptApi,
@@ -34,17 +52,11 @@ YDL_COMMON_OPTS = {
     "fragment_retries": 5,
     "socket_timeout": 20,
     "concurrent_fragment_downloads": 1,
-    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
     "noplaylist": True,
     "playlist_items": "1",
     "overwrites": True,
-    # Cloud fixes:
-    "geo_bypass": True,
-    "nocheckcertificate": True,
-    "source_address": "0.0.0.0",           # force IPv4
-    "http_headers": {"Accept-Language": "en-US,en;q=0.9"},
-    "extractor_args": {"youtube": {"player_client": ["android", "web"]}},  # avoids throttling
-    # "cookiefile": os.getenv("YTDLP_COOKIES"),  # if you need it later
+    # IMPORTANT: give ffmpeg path if we discovered one via imageio-ffmpeg
+    "ffmpeg_location": FFMPEG_BIN if HAVE_FFMPEG else None,
 }
 
 
@@ -179,53 +191,49 @@ def download_video_with_ytdlp(url: str) -> Optional[Dict[str, Union[str, int, No
         return None
 
 
-def download_audio_with_ytdlp(url: str) -> Optional[Dict[str, Union[str, int, None]]]:
+def download_audio_with_ytdlp(url: str):
     if not (HAVE_YT_DLP and url):
         return None
-
     tmpdir = tempfile.mkdtemp(prefix="yt-audio-")
-    outtmpl = "%(id)s.%(ext)s"
+    outtmpl = os.path.join(tmpdir, "%(id)s.%(ext)s")
 
+    # Prefer m4a if available, else webm/opus
     ydl_opts = {
         **YDL_COMMON_OPTS,
-        # keep original container to avoid postproc/ffmpeg dependency
-        "format": "m4a/bestaudio/best",
-        "paths": {"home": tmpdir, "temp": tmpdir},
-        "outtmpl": {"default": outtmpl},
-        "ffmpeg_location": os.getenv("FFMPEG_PATH") or None,
-        "postprocessors": [],  # no re-encode on Cloud
-        "match_filter": yt_dlp.utils.match_filter_func("!is_live & !was_live"),
+        "format": "bestaudio[ext=m4a]/bestaudio/best",
+        "outtmpl": outtmpl,
+        # no re-encode postprocessor; we’ll convert later if needed
+        "postprocessors": [],
+        "merge_output_format": None,
     }
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            if not info: return None
-            if info.get("_type") == "playlist":
-                info = (info.get("entries") or [None])[0] or info
-            vid = info.get("id") or ""
-            # try common extensions
-            for ext in ("m4a", "webm", "mp4", info.get("ext") or ""):
-                candidate = os.path.join(tmpdir, f"{vid}.{ext}")
-                if ext and os.path.exists(candidate) and os.path.getsize(candidate) > 16384:
-                    return {
-                        "path": candidate,
-                        "id": vid,
-                        "title": (info.get("title") or "").strip(),
-                        "duration": info.get("duration"),
-                    }
-            # final scan
-            for fn in os.listdir(tmpdir):
-                if fn.startswith(vid + "."):
-                    candidate = os.path.join(tmpdir, fn)
-                    if os.path.getsize(candidate) > 16384:
-                        return {
-                            "path": candidate,
-                            "id": vid,
-                            "title": (info.get("title") or "").strip(),
-                            "duration": info.get("duration"),
-                        }
-    except Exception:
+        if not info:
+            return None
+        if info.get("_type") == "playlist":
+            info = (info.get("entries") or [None])[0] or info
+
+        vid = info.get("id") or ""
+        # resolve file
+        candidate = None
+        for fn in os.listdir(tmpdir):
+            if fn.startswith(vid + "."):
+                candidate = os.path.join(tmpdir, fn)
+                break
+        if candidate and os.path.getsize(candidate) > 16384:
+            return {
+                "path": candidate,
+                "id": vid,
+                "title": (info.get("title") or "").strip(),
+                "duration": info.get("duration"),
+            }
         return None
+    except Exception as e:
+        # surface the error up to the UI
+        return {"error": f"yt-dlp audio error: {e!r}"}
+
 
 # ---------------------------
 # Orchestrator (simple & reliable)

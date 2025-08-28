@@ -16,6 +16,17 @@ from utils.content_checker import verify_text_against_nhs, verify_media_file
 import tempfile
 from utils.reminders import add_reminder, load_user_reminders
 from utils.glucose import store_glucose_reading, get_latest_glucose
+import streamlit as st
+import pytesseract
+import platform, shutil
+
+# 🔧 Tell pytesseract where to look depending on environment
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    # On Streamlit Cloud (Linux), it'll be installed via packages.txt
+    pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "tesseract"
+
 
 # =========================
 # Environment & Connections
@@ -139,19 +150,19 @@ def content_checker_page():
             except Exception as e:
                 ing = None
                 st.warning(f"Couldn’t ingest that link: {e}")
-    
+
             if not ing:
                 st.warning("Couldn’t read that link. Try uploading the file or enabling transcription.")
                 return
-    
+
             st.caption(f"Source note: {ing.get('note','')}")
             scraped_text = ing.get("text")
             video_path = ing.get("video_path")
             audio_path = ing.get("audio_path")
-    
+
             # Prefer downloaded VIDEO first (exact media), else audio
             media_path = video_path or audio_path
-    
+
             if force_transcribe and media_path:
                 result = verify_media_file(
                     media_path, embedder, index, chunks, sources,
@@ -172,7 +183,7 @@ def content_checker_page():
             else:
                 st.warning("Couldn’t extract text or media. Try uploading the file.")
                 return
-    
+
             # Cleanup temp media
             for p in [video_path, audio_path]:
                 try:
@@ -180,7 +191,7 @@ def content_checker_page():
                         os.unlink(p)
                 except Exception:
                     pass
-                
+
             # Optional: show scraped description/captions for comparison
             if scraped_text:
                 with st.expander("📄 Scraped description/captions (not used for Shorts)"):

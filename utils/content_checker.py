@@ -10,16 +10,7 @@ import platform
 import shutil
 import pytesseract
 
-if platform.system() == "Windows":
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-else:
-    # Try to find tesseract on Linux (Streamlit Cloud)
-    cmd = shutil.which("tesseract")
-    if cmd:
-        pytesseract.pytesseract.tesseract_cmd = cmd
-    else:
-        # If not installed, handle gracefully (skip OCR or show a warning)
-        TESSERACT_AVAILABLE = False
+
 # Optional media processing
 try:
     from faster_whisper import WhisperModel
@@ -76,15 +67,19 @@ _OCR_READER = None
 
 
 def _load_whisper():
-    """Lazy-load faster-whisper model on CPU."""
+    """Lazy-load faster-whisper model (CPU by default)."""
     global _WHISPER
     if _WHISPER is None and HAVE_WHISPER and USE_WHISPER:
+        # Allow override via env, default to "small" for cloud
+        model_size = os.getenv("WHISPER_MODEL", "small")  # "tiny"|"base"|"small"|"medium"|"large-v3"
         _WHISPER = WhisperModel(
-            "medium", ## fro cpu choose small or medium 
-            device="cpu",## cpu
-            compute_type="int8",## int8 for cpu
-            cpu_threads=4 
+            model_size,
+            device="cpu",                # keep CPU on cloud
+            compute_type="int8",         # best for CPU
+            cpu_threads=int(os.getenv("WHISPER_CPU_THREADS", "4")),
+            download_root=os.getenv("WHISPER_CACHE", "./.whisper")  # cache between runs
         )
+
 
 
 def _load_ocr():

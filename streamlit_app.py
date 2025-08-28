@@ -159,6 +159,13 @@ def content_checker_page():
             scraped_text = ing.get("text")
             video_path = ing.get("video_path")
             audio_path = ing.get("audio_path")
+            st.code({
+                "kind": ing.get("kind"),
+                "text_preview": (ing.get("text") or "")[:120],
+                "has_video": bool(ing.get("video_path")),
+                "has_audio": bool(ing.get("audio_path")),
+            }, language="json")
+
 
             # Prefer downloaded VIDEO first (exact media), else audio
             media_path = video_path or audio_path

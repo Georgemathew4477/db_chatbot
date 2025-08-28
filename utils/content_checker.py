@@ -7,6 +7,10 @@ import numpy as np
 from typing import List, Dict, Tuple
 from groq import Groq
 
+import platform, shutil
+
+
+
 import pytesseract
 
 if platform.system() == "Windows":

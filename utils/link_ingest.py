@@ -24,6 +24,7 @@ except Exception:
     HAVE_YT_TRANSCRIPT = False
 
 # Shared yt-dlp options (quiet + no playlists)
+# --- Shared yt-dlp options (Cloud-safe) ---
 YDL_COMMON_OPTS = {
     "quiet": True,
     "no_warnings": True,
@@ -37,8 +38,15 @@ YDL_COMMON_OPTS = {
     "noplaylist": True,
     "playlist_items": "1",
     "overwrites": True,
-    # "cookiefile": os.getenv("YTDLP_COOKIES"),
+    # Cloud fixes:
+    "geo_bypass": True,
+    "nocheckcertificate": True,
+    "source_address": "0.0.0.0",           # force IPv4
+    "http_headers": {"Accept-Language": "en-US,en;q=0.9"},
+    "extractor_args": {"youtube": {"player_client": ["android", "web"]}},  # avoids throttling
+    # "cookiefile": os.getenv("YTDLP_COOKIES"),  # if you need it later
 }
+
 
 def _file_ok(path: Optional[str]) -> bool:
     try:
@@ -128,53 +136,94 @@ def fetch_youtube_description(url: str) -> Optional[str]:
 # ---------------------------
 # Download AUDIO (always)
 # ---------------------------
+def download_video_with_ytdlp(url: str) -> Optional[Dict[str, Union[str, int, None]]]:
+    if not (HAVE_YT_DLP and url):
+        return None
+
+    tmpdir = tempfile.mkdtemp(prefix="yt-video-")
+    outtmpl = "%(id)s.%(ext)s"
+
+    ydl_opts = {
+        **YDL_COMMON_OPTS,
+        "format": "bv*+ba/b",  # bestvideo+audio merged (needs ffmpeg)
+        "merge_output_format": "mp4",
+        "paths": {"home": tmpdir, "temp": tmpdir},
+        "outtmpl": {"default": outtmpl},
+        "ffmpeg_location": os.getenv("FFMPEG_PATH") or None,
+        "match_filter": yt_dlp.utils.match_filter_func("!is_live & !was_live"),
+    }
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            if not info: return None
+            if info.get("_type") == "playlist":
+                info = (info.get("entries") or [None])[0] or info
+            vid = info.get("id") or ""
+            ext = info.get("ext") or "mp4"
+            candidate = os.path.join(tmpdir, f"{vid}.{ext}")
+            if not os.path.exists(candidate):
+                # scan dir for any file starting with the id
+                for fn in os.listdir(tmpdir):
+                    if fn.startswith(vid + "."):
+                        candidate = os.path.join(tmpdir, fn); break
+            if not (os.path.exists(candidate) and os.path.getsize(candidate) > 16384):
+                return None
+            return {
+                "path": candidate,
+                "id": vid,
+                "title": (info.get("title") or "").strip(),
+                "duration": info.get("duration"),
+                "ext": os.path.splitext(candidate)[1].lstrip("."),
+            }
+    except Exception:
+        return None
+
+
 def download_audio_with_ytdlp(url: str) -> Optional[Dict[str, Union[str, int, None]]]:
-    """
-    Download bestaudio/best as-is (no re-encode).
-    Returns: {"path","id","title","duration"} or None.
-    """
     if not (HAVE_YT_DLP and url):
         return None
 
     tmpdir = tempfile.mkdtemp(prefix="yt-audio-")
-    outtmpl = os.path.join(tmpdir, "%(id)s.%(ext)s")
+    outtmpl = "%(id)s.%(ext)s"
 
     ydl_opts = {
         **YDL_COMMON_OPTS,
-        "extract_flat": False,
-        "outtmpl": outtmpl,
-        "format": "bestaudio/best",
-        "ffmpeg_location": os.getenv("FFMPEG_PATH") or None,  # use PATH or provided
-        "postprocessors": [],  # avoid re-encode/trim; we handle WAV conversion in STT
+        # keep original container to avoid postproc/ffmpeg dependency
+        "format": "m4a/bestaudio/best",
+        "paths": {"home": tmpdir, "temp": tmpdir},
+        "outtmpl": {"default": outtmpl},
+        "ffmpeg_location": os.getenv("FFMPEG_PATH") or None,
+        "postprocessors": [],  # no re-encode on Cloud
         "match_filter": yt_dlp.utils.match_filter_func("!is_live & !was_live"),
     }
-
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
-            if not info:
-                return None
+            if not info: return None
             if info.get("_type") == "playlist":
-                entry = (info.get("entries") or [None])[0]
-                info = entry or info
-
+                info = (info.get("entries") or [None])[0] or info
             vid = info.get("id") or ""
-            title = (info.get("title") or "").strip()
-            duration = info.get("duration")
-            ext = info.get("ext") or "m4a"
-            candidate = os.path.join(tmpdir, f"{vid}.{ext}")
-
-            if not os.path.exists(candidate):
-                # Fallback: scan the temp dir for any file with that id prefix
-                for fn in os.listdir(tmpdir):
-                    if fn.startswith(vid + "."):
-                        candidate = os.path.join(tmpdir, fn)
-                        break
-
-            if not _file_ok(candidate):
-                return None
-
-            return {"path": candidate, "id": vid, "title": title, "duration": duration}
+            # try common extensions
+            for ext in ("m4a", "webm", "mp4", info.get("ext") or ""):
+                candidate = os.path.join(tmpdir, f"{vid}.{ext}")
+                if ext and os.path.exists(candidate) and os.path.getsize(candidate) > 16384:
+                    return {
+                        "path": candidate,
+                        "id": vid,
+                        "title": (info.get("title") or "").strip(),
+                        "duration": info.get("duration"),
+                    }
+            # final scan
+            for fn in os.listdir(tmpdir):
+                if fn.startswith(vid + "."):
+                    candidate = os.path.join(tmpdir, fn)
+                    if os.path.getsize(candidate) > 16384:
+                        return {
+                            "path": candidate,
+                            "id": vid,
+                            "title": (info.get("title") or "").strip(),
+                            "duration": info.get("duration"),
+                        }
     except Exception:
         return None
 

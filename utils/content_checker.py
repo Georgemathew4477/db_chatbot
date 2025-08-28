@@ -6,20 +6,20 @@ import tempfile
 import numpy as np
 from typing import List, Dict, Tuple
 from groq import Groq
-
-import platform, shutil
-
-
-
+import platform
+import shutil
 import pytesseract
 
 if platform.system() == "Windows":
-    # your laptop path
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:
-    # Streamlit Cloud (Linux) – use the system binary on PATH
-    pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "tesseract"
-
+    # Try to find tesseract on Linux (Streamlit Cloud)
+    cmd = shutil.which("tesseract")
+    if cmd:
+        pytesseract.pytesseract.tesseract_cmd = cmd
+    else:
+        # If not installed, handle gracefully (skip OCR or show a warning)
+        TESSERACT_AVAILABLE = False
 # Optional media processing
 try:
     from faster_whisper import WhisperModel

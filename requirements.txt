@@ -18,4 +18,3 @@ opencv-python-headless
 pdfminer.six
 pypdf
 python-magic
-

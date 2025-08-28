@@ -5,8 +5,16 @@ import math
 import tempfile
 import numpy as np
 from typing import List, Dict, Tuple
-
 from groq import Groq
+
+import pytesseract
+
+if platform.system() == "Windows":
+    # your laptop path
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+else:
+    # Streamlit Cloud (Linux) – use the system binary on PATH
+    pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "tesseract"
 
 # Optional media processing
 try:

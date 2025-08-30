@@ -239,61 +239,64 @@ def download_audio_with_ytdlp(url: str):
 # Orchestrator (simple & reliable)
 # ---------------------------
 def ingest_from_url(url: str) -> Dict:
-    """
+    """ 
     Strategy:
-      - If NOT Shorts and official/auto captions exist → include them as 'text' (fast).
-      - ALWAYS download bestaudio and return as 'audio_path' (works for Shorts & normal).
-      - We do NOT download video: avoids silent MP4 merges and weird muxes.
-      - Description is returned as context only (never treated as transcript).
+    - If NOT Shorts and official/auto captions exist → include them as 'text' (fast).
+    - ALWAYS download bestaudio and return as 'audio_path' (works for Shorts & normal).
+    - We do NOT download video: avoids silent MP4 merges and weird muxes.
+    - Description is returned as context only (never treated as transcript).
     """
     url = (url or "").strip()
     if not url:
         return {"kind": "invalid", "text": None, "audio_path": None, "video_path": None, "note": "Empty URL."}
 
-    if is_youtube_url(url):
-        vid = _extract_yt_id(url)
-        shorts = is_youtube_shorts(url)
+    try:
+        if is_youtube_url(url):
+            vid = _extract_yt_id(url)
+            shorts = is_youtube_shorts(url)
 
-        # Captions (non-Shorts only)
-        tx = fetch_youtube_transcript(vid) if (vid and not shorts) else None
+            # Captions (non-Shorts only)
+            tx = fetch_youtube_transcript(vid) if (vid and not shorts) else None
 
-        # Always fetch description as context (never used as transcript for Shorts)
-        desc = fetch_youtube_description(url)
+            # Always fetch description as context (never used as transcript for Shorts)
+            desc = fetch_youtube_description(url)
 
-        # Always download audio for STT (robust for both Shorts and normal)
-        ainfo = download_audio_with_ytdlp(url)
-        audio_path = ainfo["path"] if isinstance(ainfo, dict) else None
-        note_bits = []
-        if audio_path:
-            note_bits.append(f"Downloaded bestaudio. id={(ainfo or {}).get('id', vid)} title={repr((ainfo or {}).get('title'))} dur≈{(ainfo or {}).get('duration')}s")
-        if tx:
-            note_bits.append("Got official/auto captions.")
-        if desc:
-            note_bits.append("Fetched description.")
+            # Always download audio for STT (robust for both Shorts and normal)
+            ainfo = download_audio_with_ytdlp(url)
+            audio_path = ainfo["path"] if isinstance(ainfo, dict) else None
+            note_bits = []
+            if audio_path:
+                note_bits.append(f"Downloaded bestaudio. id={(ainfo or {}).get('id', vid)} title={repr((ainfo or {}).get('title'))} dur≈{(ainfo or {}).get('duration')}s")
+            if tx:
+                note_bits.append("Got official/auto captions.")
+            if desc:
+                note_bits.append("Fetched description.")
 
-        kind = (
-            "youtube_transcript" if tx else
-            "youtube_audio" if audio_path else
-            "youtube_description" if desc else
-            "youtube_fallback"
-        )
+            kind = (
+                "youtube_transcript" if tx else
+                "youtube_audio" if audio_path else
+                "youtube_description" if desc else
+                "youtube_fallback"
+            )
 
-        # Only non-Shorts get text prefilled; Shorts text stays None
-        safe_text = tx if not shorts else None
+            # Only non-Shorts get text prefilled; Shorts text stays None
+            safe_text = tx if not shorts else None
 
-        return {
-            "kind": kind,
-            "text": safe_text,
-            "video_path": None,     # simplified: we don't download video
-            "audio_path": audio_path,
-            "note": " ".join(note_bits) or f"Ingested YouTube id={vid or '?'}",
-        }
+            return {
+                "kind": kind,
+                "text": safe_text,
+                "video_path": None,  # simplified: we don't download video
+                "audio_path": audio_path,
+                "note": " ".join(note_bits) or f"Ingested YouTube id={vid or '?'}",
+            }
+        else:
+            return {
+                "kind": "unsupported",
+                "text": None,
+                "video_path": None,
+                "audio_path": None,
+                "note": "Only YouTube is supported in this demo.",
+            }
+    except Exception as e:
+        return {"kind": "error", "text": None, "audio_path": None, "video_path": None, "note": f"Error: {str(e)}"}
 
-    # Non-YouTube not implemented
-    return {
-        "kind": "unsupported",
-        "text": None,
-        "video_path": None,
-        "audio_path": None,
-        "note": "Only YouTube is supported in this demo.",
-    }

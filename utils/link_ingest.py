@@ -210,8 +210,13 @@ def download_audio_with_ytdlp(url: str):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+        
+        # Log the info returned by yt-dlp
+        print("yt-dlp info:", info)
+        
         if not info:
             return None
+
         if info.get("_type") == "playlist":
             info = (info.get("entries") or [None])[0] or info
 
@@ -222,6 +227,10 @@ def download_audio_with_ytdlp(url: str):
             if fn.startswith(vid + "."):
                 candidate = os.path.join(tmpdir, fn)
                 break
+
+        # Log the candidate file path
+        print("Downloaded audio file path:", candidate)
+
         if candidate and os.path.getsize(candidate) > 16384:
             return {
                 "path": candidate,
@@ -233,6 +242,7 @@ def download_audio_with_ytdlp(url: str):
     except Exception as e:
         # surface the error up to the UI
         return {"error": f"yt-dlp audio error: {e!r}"}
+
 
 
 # ---------------------------

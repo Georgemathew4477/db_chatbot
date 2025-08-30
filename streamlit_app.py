@@ -16,6 +16,7 @@ from utils.content_checker import verify_text_against_nhs, verify_media_file
 import tempfile
 from utils.reminders import add_reminder, load_user_reminders
 from utils.glucose import store_glucose_reading, get_latest_glucose
+from utils.audio_download import download_and_store_audio
 import streamlit as st
 import pytesseract
 import platform, shutil
@@ -148,11 +149,11 @@ def content_checker_page():
             try:
                 ing = ingest_from_url(url.strip())
                 debug = {
-                "kind": ing.get("kind"),
-                "text_preview": (ing.get("text") or "")[:120],
-                "has_video": bool(ing.get("video_path")),
-                "has_audio": bool(ing.get("audio_path")),
-                "note": ing.get("note"),
+                    "kind": ing.get("kind"),
+                    "text_preview": (ing.get("text") or "")[:120],
+                    "has_video": bool(ing.get("video_path")),
+                    "has_audio": bool(ing.get("audio_path")),
+                    "note": ing.get("note"),
                 }
             except Exception as e:
                 ing = None
@@ -168,7 +169,6 @@ def content_checker_page():
             audio_path = ing.get("audio_path")
             st.code(debug, language="json")
 
-
             # Prefer downloaded VIDEO first (exact media), else audio
             media_path = video_path or audio_path
 
@@ -178,13 +178,11 @@ def content_checker_page():
                     api_key=api_key, k=5, use_ocr=enable_ocr
                 )
             elif media_path:
-                # Prefer transcription when we have the actual media file
                 result = verify_media_file(
                     media_path, embedder, index, chunks, sources,
                     api_key=api_key, k=5, use_ocr=enable_ocr
                 )
             elif scraped_text:
-                # Only if no media was available
                 result = verify_text_against_nhs(
                     scraped_text, embedder, index, chunks, sources,
                     api_key=api_key, k=5
@@ -205,7 +203,6 @@ def content_checker_page():
             if scraped_text:
                 with st.expander("📄 Scraped description/captions (not used for Shorts)"):
                     st.text_area("Scraped text (first 1000 chars)", scraped_text[:1000], height=160, key="scraped_text_preview")
-
 
     # 3) File upload
     elif up_file is not None:

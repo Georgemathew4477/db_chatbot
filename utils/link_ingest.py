@@ -148,52 +148,10 @@ def fetch_youtube_description(url: str) -> Optional[str]:
 # ---------------------------
 # Download AUDIO (always)
 # ---------------------------
-def download_video_with_ytdlp(url: str) -> Optional[Dict[str, Union[str, int, None]]]:
-    if not (HAVE_YT_DLP and url):
-        return None
-
-    tmpdir = tempfile.mkdtemp(prefix="yt-video-")
-    outtmpl = "%(id)s.%(ext)s"
-
-    ydl_opts = {
-        **YDL_COMMON_OPTS,
-        "format": "bv*+ba/b",  # bestvideo+audio merged (needs ffmpeg)
-        "merge_output_format": "mp4",
-        "paths": {"home": tmpdir, "temp": tmpdir},
-        "outtmpl": {"default": outtmpl},
-        "ffmpeg_location": os.getenv("FFMPEG_PATH") or None,
-        "match_filter": yt_dlp.utils.match_filter_func("!is_live & !was_live"),
-    }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if not info: return None
-            if info.get("_type") == "playlist":
-                info = (info.get("entries") or [None])[0] or info
-            vid = info.get("id") or ""
-            ext = info.get("ext") or "mp4"
-            candidate = os.path.join(tmpdir, f"{vid}.{ext}")
-            if not os.path.exists(candidate):
-                # scan dir for any file starting with the id
-                for fn in os.listdir(tmpdir):
-                    if fn.startswith(vid + "."):
-                        candidate = os.path.join(tmpdir, fn); break
-            if not (os.path.exists(candidate) and os.path.getsize(candidate) > 16384):
-                return None
-            return {
-                "path": candidate,
-                "id": vid,
-                "title": (info.get("title") or "").strip(),
-                "duration": info.get("duration"),
-                "ext": os.path.splitext(candidate)[1].lstrip("."),
-            }
-    except Exception:
-        return None
-
-
 def download_audio_with_ytdlp(url: str):
     if not (HAVE_YT_DLP and url):
         return None
+
     tmpdir = tempfile.mkdtemp(prefix="yt-audio-")
     outtmpl = os.path.join(tmpdir, "%(id)s.%(ext)s")
 
@@ -202,7 +160,6 @@ def download_audio_with_ytdlp(url: str):
         **YDL_COMMON_OPTS,
         "format": "bestaudio[ext=m4a]/bestaudio/best",
         "outtmpl": outtmpl,
-        # no re-encode postprocessor; we’ll convert later if needed
         "postprocessors": [],
         "merge_output_format": None,
     }
@@ -241,7 +198,9 @@ def download_audio_with_ytdlp(url: str):
         return None
     except Exception as e:
         # surface the error up to the UI
+        print(f"yt-dlp audio error: {e!r}")
         return {"error": f"yt-dlp audio error: {e!r}"}
+
 
 
 
@@ -274,14 +233,9 @@ def ingest_from_url(url: str) -> Dict:
             # Always download audio for STT (robust for both Shorts and normal)
             ainfo = download_audio_with_ytdlp(url)
             
-            # Check if audio was successfully downloaded and path exists
             if isinstance(ainfo, dict) and "path" in ainfo:
                 audio_path = ainfo["path"]
                 
-                # Log the audio path for debugging
-                print(f"Audio downloaded successfully: {audio_path}")
-                
-                # Check if the file actually exists
                 if os.path.exists(audio_path):
                     note_bits = []
                     note_bits.append(f"Downloaded bestaudio. id={ainfo['id']} title={ainfo['title']} dur≈{ainfo['duration']}s")
@@ -303,7 +257,7 @@ def ingest_from_url(url: str) -> Dict:
                     return {
                         "kind": kind,
                         "text": safe_text,
-                        "video_path": None,  # simplified: we don't download video
+                        "video_path": None,
                         "audio_path": audio_path,
                         "note": " ".join(note_bits) or f"Ingested YouTube id={vid or '?'}",
                     }
@@ -315,6 +269,7 @@ def ingest_from_url(url: str) -> Dict:
                         "video_path": None,
                         "note": "Error: Audio file path not found after download."
                     }
+
             else:
                 return {
                     "kind": "error",

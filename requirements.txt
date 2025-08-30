@@ -19,7 +19,7 @@ opencv-python-headless
 pdfminer.six
 pypdf
 python-magic
-yt-dlp>=2025.08.27
+yt-dlp==2025.08.27
 imageio
-imageio-ffmpeg>=0.4.9
+imageio-ffmpeg
 youtube-transcript-api

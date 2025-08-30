@@ -1,3 +1,4 @@
+# --------- imports (top of file) ----------
 import os
 import time
 import faiss
@@ -11,22 +12,28 @@ from groq import Groq
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils.link_ingest import ingest_from_url
 from utils.content_checker import verify_text_against_nhs, verify_media_file
-import tempfile
 from utils.reminders import add_reminder, load_user_reminders
 from utils.glucose import store_glucose_reading, get_latest_glucose
 from utils.audio_download import download_and_store_audio
-import streamlit as st
 import pytesseract
 import platform, shutil
 
-# 🔧 Tell pytesseract where to look depending on environment
+# ✅ try to import link_ingest once (don’t exit the script if it fails)
+try:
+    from utils.link_ingest import ingest_from_url
+except Exception as e:
+    ingest_from_url = None
+    _link_ingest_error = str(e)
+else:
+    _link_ingest_error = ""
+
+# Tell pytesseract where to look
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 else:
-    # On Streamlit Cloud (Linux), it'll be installed via packages.txt
     pytesseract.pytesseract.tesseract_cmd = shutil.which("tesseract") or "tesseract"
+
 
 
 # =========================
@@ -75,46 +82,34 @@ def get_user_history(email: str, limit: int = 30):
 
 def content_checker_page():
     st.header("🕵️ Content Checker — Verify Social Media Posts/Clips")
+
+    if ingest_from_url is None:
+        st.error("`utils.link_ingest` couldn’t be imported on this deployment.")
+        if _link_ingest_error:
+            st.code(_link_ingest_error, language="text")
+        st.info("You can still paste a transcript/caption or upload media and we’ll transcribe it.")
+
     st.caption(
         "Paste a link, upload a short video/audio, or paste the transcript/caption. "
         "We’ll extract medical claims and verify them against NHS/NICE guidance."
     )
 
-    # Toggles (runtime)
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        enable_stt = st.checkbox(
-            "Enable STT (Whisper CPU)",
-            value=True,
-            help="Uses faster-whisper on CPU. Leave ON for audio/video.",
-        )
+        enable_stt = st.checkbox("Enable STT (Whisper CPU)", value=True)
     with col_b:
-        enable_ocr = st.checkbox(
-            "Enable OCR (video frames)",
-            value=False,
-            help="Requires ffmpeg + easyocr. Turn OFF if you only need audio.",
-        )
+        enable_ocr = st.checkbox("Enable OCR (video frames)", value=False)
 
-    # Expose toggles to utils/content_checker.py
     os.environ["USE_WHISPER"] = "1" if enable_stt else "0"
     os.environ["USE_OCR"] = "1" if enable_ocr else "0"
 
-    url = st.text_input(
-        "🔗 Link (YouTube or direct media preferred)",
-        placeholder="https://www.youtube.com/watch?v=...",
-    )
-    up_file = st.file_uploader(
-        "Upload video/audio (mp4/mov/mp3/wav) — optional",
-        type=["mp4", "mov", "mp3", "wav"],
-    )
-    txt = st.text_area(
-        "Transcript / Caption / Chat text (recommended)",
-        height=160,
-        placeholder="Paste what the post says here...",
-    )
-    force_transcribe = st.checkbox(
-        "Force transcription (ignore scraped transcript/description)"
-    )
+    url = st.text_input("🔗 Link (YouTube or direct media preferred)",
+                        placeholder="https://www.youtube.com/watch?v=...")
+    up_file = st.file_uploader("Upload video/audio (mp4/mov/mp3/wav) — optional",
+                               type=["mp4", "mov", "mp3", "wav"])
+    txt = st.text_area("Transcript / Caption / Chat text (recommended)",
+                       height=160, placeholder="Paste what the post says here...")
+    force_transcribe = st.checkbox("Force transcription (ignore scraped transcript/description)")
     run = st.button("Verify claims", type="primary")
 
     if not run:
@@ -124,7 +119,7 @@ def content_checker_page():
         st.error("Groq API key missing. Add `GROQ_API_KEY` in Streamlit Secrets or .env.")
         return
 
-    # Load RAG assets
+    # RAG assets
     embedder = load_model()
     chunks, sources = load_documents()
     if not chunks:
@@ -133,9 +128,9 @@ def content_checker_page():
     index, _ = create_faiss_index(embedder, chunks)
 
     result = None
-    transcript_text = None  # keep transcript to preview/send
+    transcript_text = None
 
-    # 1) Prefer pasted text
+    # 1) pasted text
     if txt and txt.strip():
         with st.spinner("Verifying pasted text against NHS/NICE..."):
             result = verify_text_against_nhs(
@@ -143,8 +138,8 @@ def content_checker_page():
             )
             transcript_text = result.get("transcript") or txt.strip()
 
-    # 2) URL ingestion
-    elif url and url.strip():
+    # 2) URL ingestion (only if importer available)
+    elif url and url.strip() and ingest_from_url is not None:
         with st.spinner("Fetching content from link..."):
             try:
                 ing = ingest_from_url(url.strip())
@@ -155,85 +150,74 @@ def content_checker_page():
                     "has_audio": bool(ing.get("audio_path")),
                     "note": ing.get("note"),
                 }
+                st.code(debug, language="json")
             except Exception as e:
                 ing = None
                 st.warning(f"Couldn’t ingest that link: {e}")
 
-            if not ing:
-                st.warning("Couldn’t read that link. Try uploading the file or enabling transcription.")
-                return
+        if not ing:
+            st.warning("Couldn’t read that link. Try uploading the file or paste a transcript.")
+            return
 
-            st.caption(f"Source note: {ing.get('note','')}")
-            scraped_text = ing.get("text")
-            video_path = ing.get("video_path")
-            audio_path = ing.get("audio_path")
-            st.code(debug, language="json")
+        st.caption(f"Source note: {ing.get('note','')}")
+        scraped_text = ing.get("text")
+        video_path = ing.get("video_path")
+        audio_path = ing.get("audio_path")
+        media_path = video_path or audio_path
 
-            # Prefer downloaded VIDEO first (exact media), else audio
-            media_path = video_path or audio_path
+        if force_transcribe and media_path:
+            result = verify_media_file(media_path, embedder, index, chunks, sources,
+                                       api_key=api_key, k=5, use_ocr=enable_ocr)
+        elif media_path:
+            result = verify_media_file(media_path, embedder, index, chunks, sources,
+                                       api_key=api_key, k=5, use_ocr=enable_ocr)
+        elif scraped_text:
+            result = verify_text_against_nhs(scraped_text, embedder, index, chunks, sources,
+                                             api_key=api_key, k=5)
+        else:
+            st.warning("Couldn’t extract text or media. Try uploading the file.")
+            return
 
-            if force_transcribe and media_path:
-                result = verify_media_file(
-                    media_path, embedder, index, chunks, sources,
-                    api_key=api_key, k=5, use_ocr=enable_ocr
-                )
-            elif media_path:
-                result = verify_media_file(
-                    media_path, embedder, index, chunks, sources,
-                    api_key=api_key, k=5, use_ocr=enable_ocr
-                )
-            elif scraped_text:
-                result = verify_text_against_nhs(
-                    scraped_text, embedder, index, chunks, sources,
-                    api_key=api_key, k=5
-                )
-            else:
-                st.warning("Couldn’t extract text or media. Try uploading the file.")
-                return
+        # cleanup
+        for p in [video_path, audio_path]:
+            try:
+                if p and os.path.exists(p):
+                    os.unlink(p)
+            except Exception:
+                pass
 
-            # Cleanup temp media
-            for p in [video_path, audio_path]:
-                try:
-                    if p and os.path.exists(p):
-                        os.unlink(p)
-                except Exception:
-                    pass
+        if scraped_text:
+            with st.expander("📄 Scraped description/captions (not used for Shorts)"):
+                st.text_area("Scraped text (first 1000 chars)", scraped_text[:1000],
+                             height=160, key="scraped_text_preview")
 
-            # Optional: show scraped description/captions for comparison
-            if scraped_text:
-                with st.expander("📄 Scraped description/captions (not used for Shorts)"):
-                    st.text_area("Scraped text (first 1000 chars)", scraped_text[:1000], height=160, key="scraped_text_preview")
+    # 2b) URL given but importer missing
+    elif url and url.strip() and ingest_from_url is None:
+        st.error("Link ingestion isn’t available on this deployment. Please upload the media or paste the transcript.")
+        return
 
-    # 3) File upload
+    # 3) file upload
     elif up_file is not None:
         with st.spinner("Transcribing media and verifying..."):
             tmp_path = None
             try:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=os.path.splitext(up_file.name)[-1]
-                ) as tmp:
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False,
+                                                 suffix=os.path.splitext(up_file.name)[-1]) as tmp:
                     tmp.write(up_file.read())
                     tmp_path = tmp.name
-                result = verify_media_file(
-                    tmp_path,
-                    embedder,
-                    index,
-                    chunks,
-                    sources,
-                    api_key=api_key,
-                    k=5,
-                    use_ocr=enable_ocr,
-                )
+                result = verify_media_file(tmp_path, embedder, index, chunks, sources,
+                                           api_key=api_key, k=5, use_ocr=enable_ocr)
                 transcript_text = result.get("transcript", "")
             finally:
                 if tmp_path and os.path.exists(tmp_path):
-                    try:
-                        os.unlink(tmp_path)
-                    except Exception:
-                        pass
+                    try: os.unlink(tmp_path)
+                    except Exception: pass
     else:
         st.warning("Please provide a link, upload a file, or paste text.")
         return
+
+    # ---- transcript preview & verdict (unchanged below this point) ----
 
     # ---------- Transcript Preview & Send ----------
     transcript_text = transcript_text or result.get("transcript", "")

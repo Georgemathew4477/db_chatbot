@@ -11,6 +11,8 @@ import shutil
 import pytesseract
 
 
+
+
 # Optional media processing
 try:
     from faster_whisper import WhisperModel
@@ -23,32 +25,39 @@ try:
     HAVE_FFMPEG = True
 except Exception:
     HAVE_FFMPEG = False
+
+# ---- Optional OCR dependency (EasyOCR) ----
+# Define safe defaults so static analyzers (Pylance) don't complain.
+HAVE_EASYOCR = False
+easyocr = None  # helps Pylance know the name exists
+
+try:
+    import easyocr as _easyocr  # type: ignore
+    easyocr = _easyocr
+    HAVE_EASYOCR = True
+except Exception:
+    # leave HAVE_EASYOCR=False and easyocr=None
+    pass
+
+
+# Prefer bundled ffmpeg/ffprobe from imageio-ffmpeg; else fall back to env/PATH
 try:
     import imageio_ffmpeg  # pulls a bundled ffmpeg binary
     FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
-    # imageio-ffmpeg 0.4.9+ also exposes get_ffprobe_exe(); if missing, fallback
     FFPROBE_BIN = getattr(imageio_ffmpeg, "get_ffprobe_exe", lambda: "ffprobe")()
     HAVE_FFMPEG = True
 except Exception:
-    # fallback to PATH
     FFMPEG_BIN = os.getenv("FFMPEG_PATH") or "ffmpeg"
     FFPROBE_BIN = os.getenv("FFPROBE_PATH") or "ffprobe"
 
-
-try:
-    import easyocr
-    HAVE_EASYOCR = True
-except Exception:
-    HAVE_EASYOCR = False
 
 # Runtime toggles (env-driven)
 USE_WHISPER = os.getenv("USE_WHISPER", "1") not in ("0", "false", "False")
 USE_OCR = os.getenv("USE_OCR", "1") not in ("0", "false", "False")
 
-# Optional explicit paths to ffmpeg/ffprobe binaries
-FFMPEG_BIN = os.getenv("FFMPEG_PATH") or "ffmpeg"
-FFPROBE_BIN = os.getenv("FFPROBE_PATH") or "ffprobe"
-
+# If ffmpeg is missing, OCR can’t work anyway
+if not HAVE_FFMPEG:
+    USE_OCR = False
 # --------------------------
 # 0) LLM wrapper (Groq)
 # --------------------------

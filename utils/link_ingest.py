@@ -265,32 +265,46 @@ def ingest_from_url(url: str) -> Dict:
             ainfo = download_audio_with_ytdlp(url)
             
             # Check if audio was successfully downloaded and path exists
-            if isinstance(ainfo, dict) and "path" in ainfo and os.path.exists(ainfo["path"]):
+            if isinstance(ainfo, dict) and "path" in ainfo:
                 audio_path = ainfo["path"]
-                note_bits = []
-                note_bits.append(f"Downloaded bestaudio. id={ainfo['id']} title={ainfo['title']} dur≈{ainfo['duration']}s")
-                if tx:
-                    note_bits.append("Got official/auto captions.")
-                if desc:
-                    note_bits.append("Fetched description.")
                 
-                kind = (
-                    "youtube_transcript" if tx else
-                    "youtube_audio" if audio_path else
-                    "youtube_description" if desc else
-                    "youtube_fallback"
-                )
+                # Log the audio path for debugging
+                print(f"Audio downloaded successfully: {audio_path}")
+                
+                # Check if the file actually exists
+                if os.path.exists(audio_path):
+                    note_bits = []
+                    note_bits.append(f"Downloaded bestaudio. id={ainfo['id']} title={ainfo['title']} dur≈{ainfo['duration']}s")
+                    if tx:
+                        note_bits.append("Got official/auto captions.")
+                    if desc:
+                        note_bits.append("Fetched description.")
+                    
+                    kind = (
+                        "youtube_transcript" if tx else
+                        "youtube_audio" if audio_path else
+                        "youtube_description" if desc else
+                        "youtube_fallback"
+                    )
 
-                # Only non-Shorts get text prefilled; Shorts text stays None
-                safe_text = tx if not shorts else None
+                    # Only non-Shorts get text prefilled; Shorts text stays None
+                    safe_text = tx if not shorts else None
 
-                return {
-                    "kind": kind,
-                    "text": safe_text,
-                    "video_path": None,  # simplified: we don't download video
-                    "audio_path": audio_path,
-                    "note": " ".join(note_bits) or f"Ingested YouTube id={vid or '?'}",
-                }
+                    return {
+                        "kind": kind,
+                        "text": safe_text,
+                        "video_path": None,  # simplified: we don't download video
+                        "audio_path": audio_path,
+                        "note": " ".join(note_bits) or f"Ingested YouTube id={vid or '?'}",
+                    }
+                else:
+                    return {
+                        "kind": "error",
+                        "text": None,
+                        "audio_path": None,
+                        "video_path": None,
+                        "note": "Error: Audio file path not found after download."
+                    }
             else:
                 return {
                     "kind": "error",
@@ -299,6 +313,7 @@ def ingest_from_url(url: str) -> Dict:
                     "video_path": None,
                     "note": "Error: Audio download failed or path not found."
                 }
+
         else:
             return {
                 "kind": "unsupported",

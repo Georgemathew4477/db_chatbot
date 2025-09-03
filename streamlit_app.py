@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from passlib.hash import bcrypt
-from groq import Groq
+from groq import Groq, BadRequestError
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -43,7 +43,16 @@ load_dotenv()
 api_key = os.getenv("GROQ_API_KEY") or st.secrets.get("GROQ_API_KEY", "")
 mongo_url = os.getenv("MONGO_URL") or st.secrets.get("MONGO_URL", "")
 
+groq_client = Groq(api_key=api_key)
 client = None
+
+PREFERRED_MODELS = [
+    "llama-3.3-70b-versatile",   # primary: high quality, large context
+    "llama-3.1-8b-instant",      # fallback: fast/cheap, good enough for short replies
+]
+
+SAFETY_MODEL = "meta-llama/llama-guard-4-12b"  # optional safety check
+
 db = None
 users_col = None
 history_col = None
@@ -394,6 +403,37 @@ with st.sidebar:
 def load_model():
     return SentenceTransformer('all-MiniLM-L6-v2')
 
+# === PATCH: safety checker (optional but recommended for medical domain) ===
+SAFETY_POLICY = """
+You are a safety classifier for a diabetes information assistant.
+Allowed: general, educational information; referencing public NHS guidance; reminders to seek clinician advice; non-diagnostic lifestyle tips that are generic and low-risk.
+Disallowed: diagnosis, prescribing, dosing instructions, interpreting personal glucose data beyond generic ranges, urgent-care triage beyond “seek medical help”.
+Output only: "ALLOW" or "BLOCK" and a short reason on the next line.
+"""
+
+def safety_check(answer: str) -> tuple[bool, str]:
+    """Return (is_safe, reason)."""
+    messages = [
+        {"role": "system", "content": SAFETY_POLICY.strip()},
+        {"role": "user", "content": f"Candidate assistant answer:\n\n{answer}\n\nClassify."}
+    ]
+    try:
+        resp = client.chat.completions.create(
+            model=SAFETY_MODEL,
+            messages=messages,
+            temperature=0.0,
+            max_completion_tokens=128
+        )
+        out = resp.choices[0].message.content.strip()
+        first_line, *rest = out.splitlines()
+        reason = "\n".join(rest).strip()
+        is_safe = first_line.upper().startswith("ALLOW")
+        return is_safe, reason
+    except Exception as e:
+        # if checker fails, default to safe but add a note (don’t break UX)
+        return True, f"safety_check_error: {e}"
+
+
 @st.cache_data
 def load_documents(chunk_size=500):
     chunks, sources = [], []
@@ -446,42 +486,100 @@ def get_rag_safety(answer, context):
             f"(Score ≤ {amber_threshold:.2f} is considered RED)"
         )
 
-def call_groq(system_prompt, user_input):
-    client = Groq(api_key=api_key)
-    result = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
-        ],
-        temperature=0.1,
-        max_tokens=1000
-    )
-    return result.choices[0].message.content
+# === PATCH: chat caller with fallback ===
+def call_groq(prompt: str, user_question: str, temperature: float = 0.2, max_tokens: int = 1000):
+    """Send a chat completion to Groq with a graceful model fallback."""
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user",   "content": user_question},
+    ]
+
+    last_err = None
+    for model_id in PREFERRED_MODELS:
+        try:
+            result = groq_client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                temperature=temperature,
+                max_completion_tokens=max_tokens,   # Groq-preferred name
+                # stream=False  # set True if you wire up streaming in Streamlit
+            )
+            # unified text extraction
+            text = result.choices[0].message.content if result.choices else ""
+            return text, model_id
+        except BadRequestError as e:
+            # if model is decommissioned/invalid, try the next
+            if "decommissioned" in str(e).lower() or "invalid" in str(e).lower():
+                last_err = e
+                continue
+            # other 400s (bad inputs), bubble up
+            raise
+        except Exception as e:
+            # transient errors (timeouts, rate limits) -> try fallback
+            last_err = e
+            continue
+
+    # if we got here, both attempts failed
+    raise last_err or RuntimeError("No available Groq models responded.")
+
 
 def ask_bot(question, embedder, index, chunks, sources, preferences, k=5):
-    q_embed = embedder.encode([question])[0]
-    _, I = index.search(np.array([q_embed]), k=k)
-    top_chunks = [chunks[i] for i in I[0] if i < len(chunks)]
-    top_sources = [sources[i] for i in I[0] if i < len(sources)]
+    import numpy as np
+    import streamlit as st
 
+    # --- 1) Retrieve top-k chunks via FAISS ---
+    q_embed = embedder.encode([question])[0]
+    q_vec = np.array([q_embed], dtype="float32")
+    _, I = index.search(q_vec, k=k)
+
+    idxs = [i for i in I[0] if 0 <= i < len(chunks)]
+    top_chunks = [chunks[i] for i in idxs]
+    top_sources = [sources[i] for i in idxs]
+
+    # --- 2) Build context (RAG) + light personalization ---
     context = "\n\n".join(top_chunks)
 
-    # Personalization / latest glucose (if any)
-    glucose = get_latest_glucose(st.session_state.user_email)
+    # Handle session/email safely
+    user_email = getattr(st.session_state, "user_email", None)
+    glucose = get_latest_glucose(user_email) if user_email else None
     glucose_line = f"Latest Glucose: {glucose} mg/dL\n" if glucose else ""
-    user_info = (
-        f"User Info: Age: {preferences.get('age')}, "
-        f"Gender: {preferences.get('gender')}, "
-        f"Diabetes Type: {preferences.get('diabetes_type')}"
-    )
-    context += f"\n\n{glucose_line}{user_info}"
 
-    prompt = f"""You are an NHS-based assistant. Only use this NHS guidance to answer:
-{context}
-Be honest. If unsure, say so and recommend a doctor."""
-    answer = call_groq(prompt, question)
-    return answer, top_chunks, top_sources
+    # Handle preferences safely
+    preferences = preferences or {}
+    user_info = (
+        f"User Info: Age: {preferences.get('age', 'N/A')}, "
+        f"Gender: {preferences.get('gender', 'N/A')}, "
+        f"Diabetes Type: {preferences.get('diabetes_type', 'N/A')}"
+    )
+
+    full_context = f"{context}\n\n{glucose_line}{user_info}"
+
+    # --- 3) System prompt (kept concise) ---
+    prompt = (
+        "You are an NHS-based assistant. Answer using ONLY the provided NHS guidance/context.\n"
+        "If the answer is not clearly supported, say you’re unsure and suggest speaking to a clinician.\n\n"
+        f"{full_context}"
+    )
+
+    # --- 4) Call LLM (with model fallback) ---
+    model_answer, used_model = call_groq(
+        prompt=prompt,
+        user_question=question,
+        temperature=0.2,
+        max_tokens=1000
+    )
+
+    # --- 5) Optional safety pass (Llama-Guard) ---
+    is_safe, reason = safety_check(model_answer)
+    if not is_safe:
+        model_answer = (
+            "I'm sorry — I can't provide that. For medical questions like dosing, diagnosis, "
+            "or urgent symptoms, please consult a qualified healthcare professional or NHS 111."
+        )
+
+    # --- 6) Return (keep your original signature) ---
+    return model_answer, top_chunks, top_sources
+
 
 # =========================
 # Pages
